@@ -3,6 +3,7 @@
 	<head>
 		<!-- jquery-related libs -->
   		<link rel="stylesheet" href="/css/style.css">
+  		<link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
   		<script src="https://code.jquery.com/jquery-1.12.4.js"></script>
   		<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
 		<meta charset="utf-8">
@@ -22,7 +23,7 @@
 			/*
 			 * Add some Jquery code to slide around camera height, distance
 			 */
-
+			$( function() {
     			$( "#heightSlider" ).slider({
 				min: 0,
 				max: 10000000,
@@ -40,7 +41,7 @@
 					camera.updateProjectionMatrix();
 				}
 			});
-			
+			});
 			/*
 			 * Source code copied from example source... let's try to better understand this
 			 * then put it into its own javascript source file
