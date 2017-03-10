@@ -17,7 +17,7 @@ return [
         ],
 
         'db' => [
-            'config_file' => 'aws-config.php' 
+            'config_file' => '../aws-config.php' 
         ],
     ],
 ];
