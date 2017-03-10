@@ -1,0 +1,5 @@
+/vendor/
+/logs/*
+!/logs/README.md
+aws-config.php
+composer.phar
