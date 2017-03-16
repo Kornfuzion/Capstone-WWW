@@ -8,25 +8,40 @@ class EventController {
         $this->container = $app->getContainer(); 
         $app->get('/events', array($this, 'getNearestEvents'));
         $app->get('/event/{id}', array($this, 'getEventByID')); 
-        $app->post('/event/', array($this, 'createEvent'));
+        $app->post('/event/{id}', array($this, 'createEvent'));
         $app->put('/event/{id}', array($this, 'editEvent'));
         $app->post('/event/join/{id}', array($this, 'joinEvent'));
+        $app->post('/event/upload/{id}', array($this, 'contributeToEvent'));
         $app->delete('/event/{id}', array($this, 'deleteEvent'));
+    }
+
+    public static function getTestEvent(){
+        $event = array();
+        $event['time_created'] = date('Y-m-d H:i:s');
+        $event['id'] = 'test'; 
+        $event['name'] = 'Lit Drake Concert';
+        $event['latitude'] = -79.3832;
+        $event['longitude'] = 79.3832;
+        $event['thumbnail'] = 'https://ih1.redbubble.net/image.24695464.0125/flat,800x800,070,f.u1.jpg';
+        $event['frames'] = 50;
+        return $event;
     }
 
     public static function parseItem($item){
         $event = array(
-            'id' => $item['id']['S'],
-            'latitude' => $item['latitude']['N'],
-            'longitude' => $item['longitude']['N'],
-            'status' => $item['status']['S'], //NEW, CAPTURING, QUEUED, PROCESSING, FINISHED 
-            'thumbnail' => $item['thumbnail']['S'], //TODO: S3 image upload with appropriate path or only allow links on the interwebs
-            'time_created' => $item['time_created']['S'],
+            'id' => isset($item['id']['S']) ? $item['id']['S'] : null,
+            'name' => isset($item['name']['S']) ? $item['name']['S'] : null,
+            'latitude' => isset($item['latitude']['N']) ? $item['latitude']['N'] : null,
+            'longitude' => isset($item['longitude']['N']) ? $item['longitude']['N'] : null,
+            'status' => isset($item['status']['S']) ? $item['status']['S'] : null, //NEW, CAPTURING, QUEUED, PROCESSING, FINISHED 
+            'thumbnail' => isset($item['thumbnail']['S']) ? $item['thumbnail']['S'] : null, //TODO: S3 image upload with appropriate path or only allow links on the interwebs
+            'time_created' => isset($item['time_created']['S']) ? $item['time_created']['S'] : null,
+            'num_participants' => isset($item['num_participants']['N']) ? $item['num_participants']['N'] : null, 
             //"time_started" => "time_started",
             //"time_queued" => "time_queued",
             //"time_processed" => "time_processed",
-            "participants" => $item['participants']['SS'], //array('SS' => array($event['uid'])),
-            "frames" => $item['frames']['N'] //number of frames? 
+            "participants" => isset($item['participants']['SS']) ? $item['participants']['SS'] : null, //array('SS' => array($event['uid'])),
+            "frames" => isset($item['frames']['N']) ? $item['frames']['N'] : null //number of frames? 
         );
 
         return $event;
@@ -91,22 +106,22 @@ class EventController {
 
     function createEvent($request, $response, $args) {
         $event = json_decode($request->getBody());
-
-        $event['time_created'] = date('Y-m-d H:i:s');
-        $event['id'] = $event['uid'] . "_" . round($event['latitude']) . "_" . round($event['longitude']); //let's assume you can only hold one active scope at a time. 
+        
         $result = $this->container->db->putItem(array(
             'TableName' => 'events',
             'Item' => array(        
                 'id' => array('S' => $event['id']),
+                'name' => array('S' => $event['name']),
                 'latitude' =>  array('N' => $event['latitude']), //-79.3832
                 'longitude' => array('N' => $event['longitude']), //79.3832
                 'status' => array('S' => "NEW"), //NEW, CAPTURING, QUEUED, PROCESSING, FINISHED 
                 'thumbnail' => array('S' => $event['thumbnail']), //TODO: S3 image upload with appropriate path or only allow links on the interwebs
                 'time_created' => array('S' => $event['time_created']),
+                'num_participants' => array('N' => 0), //start with no participants at the beginning
                 //"time_started" => "time_started",
                 //"time_queued" => "time_started",
                 //"time_processed" => "time_started",
-                'participants' => array('SS' => array($event['uid'])),
+                //'participants' => array('SS' => array($event['uid'])),
                 'frames' => array('N' => $event['frames']) //number of frames? 
             )
         ));
@@ -124,12 +139,13 @@ class EventController {
                 'id' => array('S' => $event['id']) 
             ),
             'ExpressionAttributeValues' =>  array(
+                ':name' => array('S' => $event['name']),
                 ':latitude' => array('N' => $event['latitude']),
                 ':longitude' => array('N' => $event['longitude']),
                 ':thumbnail' => array('S' => $event['thumbnail']),
                 ':frames' => array('N' => $event['frames']) 
             ),
-            'UpdateExpression' => 'set latitude = :latitude, longitude = :longitude, thumbnail = :thumbnail, frames = :frames',
+            'UpdateExpression' => 'set name = :name, latitude = :latitude, longitude = :longitude, thumbnail = :thumbnail, frames = :frames',
             'ReturnValues' => 'ALL_NEW'
         ));
 
@@ -148,14 +164,45 @@ class EventController {
                 'id' => array('S' => $id) 
             ),
             'ExpressionAttributeValues' =>  array(
-                ':uid' => array('SS' => array($r['uid']))
+                ':CONST_ONE' => array('N' => 1)
+            ),
+            'UpdateExpression' => 'ADD num_participants :CONST_ONE',
+            'ReturnValues' => 'ALL_NEW'
+        ));
+
+        $event = self::parseItem($result['Attributes']); 
+        return $response->withJson($event);
+    }
+
+    function contributeToEvent($request, $response, $args) {
+        $id = $request->getAttribute('id');        
+        $uid = $request->getParam('uid');
+
+        $files = $request->getUploadedFiles();
+        if (empty($files['image'])) {
+            throw new Exception('Expected image');
+        }
+     
+        $image = $files['image'];
+        $result = $this->container->s3->putObject(array(
+            'Bucket'     => 'com.scope',
+            'Key'        => "$id/images/$uid.jpg",
+            'Body'       => $image->getStream()->getContents(),
+        ));
+        
+        $result = $this->container->db->updateItem (array(
+            'TableName' => 'events',
+            'Key' => array(
+                'id' => array('S' => $id) 
+            ),
+            'ExpressionAttributeValues' =>  array(
+                ':uid' => array('SS' => array($uid))
             ),
             'UpdateExpression' => 'ADD participants :uid',
             'ReturnValues' => 'ALL_NEW'
         ));
 
-        print_r($result);
-
+        //TODO: if all the participants are accounted for, we start the image pipeline
         $event = self::parseItem($result['Attributes']);
         return $response->withJson($event);
     }
