@@ -15,7 +15,7 @@ class ModelController {
 
     function pointCloudViewer ($request, $response, $args) {
         $eventId = $request->getAttribute('eventId');
-        $modelPath = "self::$modelHost/$eventId/model/point/1.ply"; //TODO: multiple frames
+        $modelPath = self::$modelHost . "$eventId/model/point/1.ply"; //TODO: multiple frames
         $args['modelPath'] = $modelPath; 
         return $this->container->renderer->render($response, 'model-viewer.phtml', $args);
     }
@@ -23,7 +23,7 @@ class ModelController {
     function meshViewer ($request, $response, $args) {
         //TODO;
         $eventId = $request->getAttribute('eventId');
-        $modelPath = "self::$modelHost/$eventId/model/mesh/1.ply"; //TODO: multiple frames
+        $modelPath = self::$modelHost . "$eventId/model/mesh/1.ply"; //TODO: multiple frames
         $args['modelPath'] = $modelPath; 
         return $this->container->renderer->render($response, 'model-viewer.phtml', $args);
     }

@@ -178,11 +178,12 @@ class EventController {
         $id = $request->getAttribute('id');        
         $uid = $request->getParam('uid');
 
+        //TODO: multiple frames? at once? at a single time?
         $files = $request->getUploadedFiles();
         if (empty($files['image'])) {
             throw new Exception('Expected image');
         }
-     
+        
         $image = $files['image'];
         $result = $this->container->s3->putObject(array(
             'Bucket'     => 'com.scope',
