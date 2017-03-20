@@ -7,23 +7,24 @@ class EventController {
     public function __construct($app) {
         $this->container = $app->getContainer(); 
         $app->get('/events', array($this, 'getNearestEvents'));
+        $app->get('/events/archive', array($this, 'getArchivedEvents'));
         $app->get('/event/{id}', array($this, 'getEventByID')); 
         $app->post('/event/{id}', array($this, 'createEvent'));
         $app->put('/event/{id}', array($this, 'editEvent'));
-        $app->post('/event/join/{id}', array($this, 'joinEvent'));
-        $app->post('/event/upload/{id}', array($this, 'contributeToEvent'));
+        $app->get('/event/join/{id}', array($this, 'joinEvent'));
+        $app->post('/event/upload/{id}', array($this, 'contributeToEvent'))->setOutputBuffering(false);
         $app->delete('/event/{id}', array($this, 'deleteEvent'));
     }
 
     public static function getTestEvent(){
         $event = array();
         $event['time_created'] = date('Y-m-d H:i:s');
-        $event['id'] = 'test'; 
+        $event['id'] = 'test2'; 
         $event['name'] = 'Lit Drake Concert';
         $event['latitude'] = -79.3832;
         $event['longitude'] = 79.3832;
         $event['thumbnail'] = 'https://ih1.redbubble.net/image.24695464.0125/flat,800x800,070,f.u1.jpg';
-        $event['frames'] = 50;
+        $event['frames'] = 1; //let's start off with just one frame
         return $event;
     }
 
@@ -74,6 +75,28 @@ class EventController {
                 'status' => array(
                     'AttributeValueList' => array(
                         array('S' => "NEW")
+                    ),
+                    'ComparisonOperator' => 'EQ'
+                )
+            )
+        ));
+
+        $json = array();
+        foreach ($iterator as $item) {
+            //may need to do some parsing
+            array_push($json, self::parseItem($item));
+        }
+
+        return $response->withJson($json);
+    }
+
+    function getArchivedEvents($request, $response, $args) {
+        $iterator = $this->container->db->getIterator('Scan', array(
+            'TableName' => 'events',
+            'ScanFilter' => array(
+                'status' => array(
+                    'AttributeValueList' => array(
+                        array('S' => "FINISHED")
                     ),
                     'ComparisonOperator' => 'EQ'
                 )
@@ -183,12 +206,14 @@ class EventController {
         if (empty($files['image'])) {
             throw new Exception('Expected image');
         }
-        
+
         $image = $files['image'];
+
+        $imageStream = $image->getStream();
         $result = $this->container->s3->putObject(array(
             'Bucket'     => 'com.scope',
             'Key'        => "$id/images/$uid.jpg",
-            'Body'       => $image->getStream()->getContents(),
+            'Body'       => $imageStream->getContents(),
         ));
         
         $result = $this->container->db->updateItem (array(
@@ -202,9 +227,42 @@ class EventController {
             'UpdateExpression' => 'ADD participants :uid',
             'ReturnValues' => 'ALL_NEW'
         ));
-
-        //TODO: if all the participants are accounted for, we start the image pipeline
+        
+        //if all the participants are accounted for, we send it to the image pipeline
         $event = self::parseItem($result['Attributes']);
+        if (sizeof($event['participants']) >= $event['num_participants']){
+            //update the event to indicate its processing
+            $result = $this->container->db->updateItem (array(
+                'TableName' => 'events',
+                'Key' => array(
+                    'id' => array('S' => $id) 
+                ),
+                'ExpressionAttributeNames' =>  array(
+                    '#S' => 'status'
+                ),
+                'ExpressionAttributeValues' =>  array(
+                    ':status' => array('S' => "QUEUED"), 
+                ),
+                'UpdateExpression' => 'set #S = :status',
+                'ReturnValues' => 'ALL_NEW'
+            ));
+            $event = self::parseItem($result['Attributes']);
+
+            for ($frame_id = 0; $frame_id < $event['frames']; $frame_id++) {
+                $message = array(
+                    "id" => $id,
+                    "frame" => $frame_id, 
+                    "participants" => $event['participants'],
+                );
+
+                $this->container->sqs->sendMessage(array(
+                    'QueueUrl'    => 'https://sqs.us-west-2.amazonaws.com/196517509005/modelProcessingQueue',
+                    'MessageBody' => json_encode($message),
+                ));
+            }
+                
+        } 
+        
         return $response->withJson($event);
     }
 

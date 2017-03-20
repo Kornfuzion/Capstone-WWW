@@ -16,7 +16,7 @@ return [
             'level' => \Monolog\Logger::DEBUG,
         ],
 
-        'db' => [
+        'aws' => [
             'config_file' => '../aws-config.php' 
         ],
     ],

@@ -21,7 +21,7 @@ $container['logger'] = function ($c) {
 // AWS
 use Aws\Common\Aws;
 $container['db'] = function ($c) {
-    $settings = $c->get('settings')['db'];
+    $settings = $c->get('settings')['aws'];
     
     // Create a service builder using a configuration file
     $aws = Aws::factory($settings['config_file']);
@@ -32,12 +32,23 @@ $container['db'] = function ($c) {
 };
 
 $container['s3'] = function ($c) {
-    $settings = $c->get('settings')['db'];
+    $settings = $c->get('settings')['aws'];
     
     // Create a service builder using a configuration file
     $aws = Aws::factory($settings['config_file']);
 
     // Get the client from the builder by namespace
     $client = $aws->get('S3');
+    return $client;
+};
+
+$container['sqs'] = function ($c) {
+    $settings = $c->get('settings')['aws'];
+    
+    // Create a service builder using a configuration file
+    $aws = Aws::factory($settings['config_file']);
+
+    // Get the client from the builder by namespace
+    $client = $aws->get('Sqs');
     return $client;
 };
