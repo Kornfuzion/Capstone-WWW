@@ -141,7 +141,7 @@ def runPipeline(event_id, frame_id, image_dir):
 
     end_time = time.time()
 
-    shutil.rmtree('image_dir')
+    shutil.rmtree(image_dir)
 
     #TODO: Keep track of the time it takes    
     print("Time Elapsed for frame:"  + str(end_time - start_time))
