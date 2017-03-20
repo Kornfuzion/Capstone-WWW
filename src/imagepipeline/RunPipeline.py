@@ -49,6 +49,7 @@ def runPipeline(event_id, frame_id, image_dir):
     BUNDLER_BIN = os.path.join(BUNDLER_HOME, "bin")
 
     #move to the image directory and run this command 
+    old_dir = os.getcwd()
     os.chdir(image_dir)
 
     #resize images if necessary
@@ -141,7 +142,8 @@ def runPipeline(event_id, frame_id, image_dir):
 
     end_time = time.time()
 
-    shutil.rmtree(image_dir)
+    os.chdir(old_dir)
+    shutil.rmtree(image_dir)  
 
     #TODO: Keep track of the time it takes    
     print("Time Elapsed for frame:"  + str(end_time - start_time))
