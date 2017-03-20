@@ -33,9 +33,18 @@ def receiveMessage():
             exit(1)
 
         updateEvent(event_info['id'],"PROCESSING")
+        old_dir = os.getcwd()
         image_dir = createImageDirectory(event_info['id'], event_info['participants'])
-        runPipeline(event_info['id'], event_info['frame'], image_dir)
-        updateEvent(event_info['id'],"FINISHED")
+        success = runPipeline(event_info['id'], event_info['frame'], image_dir)
+        
+        #clean up the temporary directory
+        os.chdir(old_dir)
+        shutil.rmtree(event_info['id']) 
+
+        if (success):
+            updateEvent(event_info['id'],"FINISHED")
+        else:
+            updateEvent(event_info['id'],"FAILED")
 
         response = client.delete_message(
             QueueUrl='https://sqs.us-west-2.amazonaws.com/196517509005/modelProcessingQueue',
@@ -49,7 +58,6 @@ def runPipeline(event_id, frame_id, image_dir):
     BUNDLER_BIN = os.path.join(BUNDLER_HOME, "bin")
 
     #move to the image directory and run this command 
-    old_dir = os.getcwd()
     os.chdir(image_dir)
 
     #resize images if necessary
@@ -110,12 +118,19 @@ def runPipeline(event_id, frame_id, image_dir):
     pPMVS = subprocess.Popen( [os.path.join(PMVS_BIN, "pmvs2"), "pmvs/", "pmvs_options.txt", "PSET"] )
     pPMVS.wait()
 
+    #pmvs
+
     #PLY color correction
     pSed = subprocess.Popen(["sed", "-i", "s/diffuse_//g", os.path.join(pmvs_model_dir, "pmvs_options.txt.ply")])
     pSed.wait()
 
     model_file_name = os.path.join(pmvs_model_dir, "pmvs_options.txt.ply") 
     
+    #check if produced file has significant amount of data
+    file_size = os.path.getsize(model_file_name)
+    if (file_size <= 500): #picking 500 bytes for now. Realistically should be order of megabytes for most images
+        return False
+
     #upload point cloud
     s3 = boto3.client('s3')
     with open(model_file_name, 'rb') as data:
@@ -140,13 +155,11 @@ def runPipeline(event_id, frame_id, image_dir):
         key = event_id + "/model/mesh/" + str(frame_id) + ".ply"
         s3.upload_fileobj(data, 'com.scope', key)
 
-    end_time = time.time()
-
-    os.chdir(old_dir)
-    shutil.rmtree(image_dir)  
+    end_time = time.time() 
 
     #TODO: Keep track of the time it takes    
     print("Time Elapsed for frame:"  + str(end_time - start_time))
+    return True
 
 def createImageDirectory(event_id, participants):
     image_dir = os.path.join(str(event_id), "images")
