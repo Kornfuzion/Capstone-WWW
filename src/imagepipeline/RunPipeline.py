@@ -8,6 +8,7 @@ import os
 import subprocess
 import sys
 import time
+import shutil
 
 import boto3
 import json
@@ -95,8 +96,6 @@ def runPipeline(event_id, frame_id, image_dir):
         os.mkdir(pmvs_model_dir)
 
     image_list = list()
-
-    import shutil
 
     for file in os.listdir("pmvs"):
         if file.endswith(".rd.jpg"):
