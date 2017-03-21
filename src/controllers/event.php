@@ -129,6 +129,7 @@ class EventController {
 
     function createEvent($request, $response, $args) {
         $event = json_decode($request->getBody());
+        $event['time_created'] = date('Y-m-d H:i:s');
         
         $result = $this->container->db->putItem(array(
             'TableName' => 'events',
@@ -198,7 +199,7 @@ class EventController {
     }
 
     function contributeToEvent($request, $response, $args) {
-        $id = $request->getAttribute('id');        
+        $id = $request->getAttribute('id');
         $uid = $request->getParam('uid');
 
         //TODO: multiple frames? at once? at a single time?
@@ -238,12 +239,14 @@ class EventController {
                     'id' => array('S' => $id) 
                 ),
                 'ExpressionAttributeNames' =>  array(
-                    '#S' => 'status'
+                    '#S' => 'status',
+                    '#TQ' => 'time_queued',
                 ),
                 'ExpressionAttributeValues' =>  array(
                     ':status' => array('S' => "QUEUED"), 
+                    ':time_queued' => array('S' => date('Y-m-d H:i:s')), 
                 ),
-                'UpdateExpression' => 'set #S = :status',
+                'UpdateExpression' => 'set #S = :status, #TQ = :time_queued',
                 'ReturnValues' => 'ALL_NEW'
             ));
             $event = self::parseItem($result['Attributes']);
@@ -260,9 +263,7 @@ class EventController {
                     'MessageBody' => json_encode($message),
                 ));
             }
-                
-        } 
-        
+        }         
         return $response->withJson($event);
     }
 

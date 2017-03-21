@@ -34,6 +34,7 @@ def receiveMessage():
             exit(1)
 
         updateEvent(event_info['id'],"PROCESSING")
+        start_time = time.time()
         old_dir = os.getcwd()
         image_dir = createImageDirectory(event_info['id'], event_info['participants'])
         success = runPipeline(event_info['id'], event_info['frame'], image_dir)
@@ -41,6 +42,31 @@ def receiveMessage():
         #clean up the temporary directory
         os.chdir(old_dir)
         shutil.rmtree(event_info['id']) 
+
+        time_format = '%Y-%m-%d %H:%M:%S'
+        end_time = time.time() 
+        db = boto3.client('dynamodb')
+        result = db.update_item(
+            TableName='events',
+            ExpressionAttributeValues={
+                ':time_processed': {
+                    'S': time.strftime(time_format, start_time),
+                },
+                ':time_finished': {
+                    'S': time.strftime(time_format, start_time),
+                },
+                ':process_time': {
+                    'N': (end_time - start_time),
+                }, 
+            },
+            Key={
+                'id': {
+                    'S': event_id,
+                },
+            },
+            ReturnValues='ALL_NEW',
+            UpdateExpression='SET process_time = :processingTime, time_processed = :time_processed, time_finished = :time_finished',
+        )
 
         if (success):
             updateEvent(event_info['id'],"FINISHED")
@@ -53,8 +79,6 @@ def receiveMessage():
         )
 
 def runPipeline(event_id, frame_id, image_dir):
-    start_time = time.time()
-
     BUNDLER_HOME = "/var/www/src/lib/bundler_sfm/"
     BUNDLER_BIN = os.path.join(BUNDLER_HOME, "bin")
 
@@ -154,10 +178,6 @@ def runPipeline(event_id, frame_id, image_dir):
         key = event_id + "/model/mesh/" + str(frame_id) + ".ply"
         s3.upload_fileobj(data, 'com.scope', key)
 
-    end_time = time.time() 
-
-    #TODO: Keep track of the time it takes    
-    print("Time Elapsed for frame:"  + str(end_time - start_time))
     return True
 
 def createImageDirectory(event_id, participants):
