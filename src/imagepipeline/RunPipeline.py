@@ -8,6 +8,7 @@ import os
 import subprocess
 import sys
 import time
+import datetime
 import shutil
 
 import boto3
@@ -34,8 +35,15 @@ def receiveMessage():
             exit(1)
 
         updateEvent(event_info['id'],"PROCESSING")
+        
+        #start measuring the time
+        time_processed = datetime.now()
         start_time = time.time()
+
+        #save where we were
         old_dir = os.getcwd()
+
+        #run the pipe
         image_dir = createImageDirectory(event_info['id'], event_info['participants'])
         success = runPipeline(event_info['id'], event_info['frame'], image_dir)
         
@@ -43,17 +51,19 @@ def receiveMessage():
         os.chdir(old_dir)
         shutil.rmtree(event_info['id']) 
 
+        #save the time it took
         time_format = '%Y-%m-%d %H:%M:%S'
         end_time = time.time() 
+        time_finished = datetime.now()
         db = boto3.client('dynamodb')
         result = db.update_item(
             TableName='events',
             ExpressionAttributeValues={
                 ':time_processed': {
-                    'S': time.strftime(time_format, start_time),
+                    'S': time_processed.strftime(time_format),
                 },
                 ':time_finished': {
-                    'S': time.strftime(time_format, start_time),
+                    'S': time_finished.strftime(time_format),
                 },
                 ':process_time': {
                     'N': (end_time - start_time),
@@ -68,6 +78,7 @@ def receiveMessage():
             UpdateExpression='SET process_time = :processingTime, time_processed = :time_processed, time_finished = :time_finished',
         )
 
+        #update the event 
         if (success):
             updateEvent(event_info['id'],"FINISHED")
         else:
