@@ -8,7 +8,7 @@ import os
 import subprocess
 import sys
 import time
-import datetime
+from datetime import datetime
 import shutil
 
 import boto3
@@ -66,16 +66,16 @@ def receiveMessage():
                     'S': time_finished.strftime(time_format),
                 },
                 ':process_time': {
-                    'N': (end_time - start_time),
+                    'S': str(end_time - start_time),
                 }, 
             },
             Key={
                 'id': {
-                    'S': event_id,
+                    'S': event_info['id'],
                 },
             },
             ReturnValues='ALL_NEW',
-            UpdateExpression='SET process_time = :processingTime, time_processed = :time_processed, time_finished = :time_finished',
+            UpdateExpression='SET process_time = :process_time, time_processed = :time_processed, time_finished = :time_finished',
         )
 
         #update the event 
