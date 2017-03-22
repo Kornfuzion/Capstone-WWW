@@ -8,7 +8,8 @@ class EventController {
         $this->container = $app->getContainer(); 
         $app->get('/events', array($this, 'getNearestEvents'));
         $app->get('/events/archive', array($this, 'getArchivedEvents'));
-        $app->get('/event/{id}', array($this, 'getEventByID')); 
+        $app->get('/event/{id}', array($this, 'getEventByID'));
+        $app->get('/event/capture/{id}', array($this, 'initiateImageCapture')); 
         $app->post('/event/{id}', array($this, 'createEvent'));
         $app->put('/event/{id}', array($this, 'editEvent'));
         $app->get('/event/join/{id}', array($this, 'joinEvent'));
@@ -46,6 +47,36 @@ class EventController {
         );
 
         return $event;
+    }
+
+    function sendBroadcast($title, $body, $topic) {
+        $url = "https://fcm.googleapis.com/fcm/send";
+
+        $data = array(
+            'data' => array(
+                'title' => $title,
+                'body' => $body      
+            ),
+            'to' => "/topics/$topic" 
+        );
+
+        $content = json_encode($data, JSON_UNESCAPED_SLASHES);
+        $requestHeaders = array(
+            'Content-type: application/json',
+            'Authorization: key=AAAAkH7zsZQ:APA91bERB53BhlshsRLZ1p82VSih4d_GDs9eE9jdCaRiCFXhNls1_EZAmVBhNMyYF_iDANy6m9ReJ_PIfdoQlRsy5lM1wGI5V0EhuajBrmZeXDjPXlAwt2Olns3VnyTBny5UWjk3Uhdi',
+            sprintf('Content-Length: %d', strlen($content))
+        );
+
+        // use key 'http' even if you send the request to https://...
+        $options = array(
+            'http' => array(
+                'header'  => implode("\r\n", $requestHeaders), 
+                'method'  => 'POST',
+                'content' => $content
+            )
+        );
+        $context  = stream_context_create($options);
+        return file_get_contents($url, false, $context);
     }
 
     function getNearestEvents($request, $response, $args) {
@@ -196,6 +227,12 @@ class EventController {
 
         $event = self::parseItem($result['Attributes']); 
         return $response->withJson($event);
+    }
+
+    function initiateImageCapture($request, $response, $args) {
+        $eventId = $request->getAttribute('id');
+        $result = sendBroadcast("Capture", $eventId, $eventId);
+        return $response->withJson($result);
     }
 
     function contributeToEvent($request, $response, $args) {
