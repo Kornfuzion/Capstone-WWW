@@ -1,0 +1,78 @@
+#!/bin/sh
+#
+# image_pipeline          Start/Stop our image_pipeline script.
+#
+# chkconfig: 2345 90 60
+# description: Image Pipeline Daemon. Spawns a worker thread to process image pipeline requests from the queue
+#
+
+# The daemon's name (to ensure uniqueness and for stop, restart and status)
+name="image_pipeline"
+
+# The path of the client executable
+python="python"
+
+image_pipeline="/var/www/RunPipeline.py"  
+
+prog=$(basename $0 | sed -e 's/^[SK][0-9][0-9]//')
+
+pidfile=${PIDFILE-/var/run/${prog}.pid}
+RETVAL=0
+
+# The path to chdir to (otherwise /)
+chdir="/var/www"  
+
+# The syslog facility or filename for the client's stdout (otherwise discarded)
+stdout="$prog.info"  
+# The syslog facility or filename for the client's stderr (otherwise discarded)
+stderr="$prog.err"
+
+start() {
+    echo -n $"Starting $prog: "
+    daemon --pidfile=${pidfile} $python $image_pipeline 
+    RETVAL=$?
+    echo 
+    [ $RETVAL = 0 ] 
+    return $RETVAL
+}
+stop() {
+    echo -n $"Stopping $prog: "
+    killproc -p ${pidfile} -d 10 $image_pipeline
+    RETVAL=$?
+    echo
+    [ $RETVAL = 0 ] && rm -f ${pidfile}
+}
+
+case "$1" in  
+    start)
+        # if I put the function library on top it causes the daemon to be put on the foreground...
+        start
+        ;;
+    stop)
+        # Source function library.
+        . /etc/rc.d/init.d/functions
+        stop
+        ;;
+    restart|reload)
+        stop
+        start
+        ;;
+
+    status)
+        # Source function library.
+        . /etc/rc.d/init.d/functions
+        if ! test -f ${pidfile}; then
+            echo $prog is stopped
+            RETVAL=3
+        else
+            status -p ${pidfile} $image_pipeline
+            RETVAL=$?
+        fi
+        ;;
+
+    *)
+        echo "usage: $0 <start|stop|restart|reload|status>" >&2
+        exit 1
+esac
+
+exit $RETVAL
