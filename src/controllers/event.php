@@ -174,6 +174,7 @@ class EventController {
                 'thumbnail' => array('S' => $event['thumbnail']), //TODO: S3 image upload with appropriate path or only allow links on the interwebs
                 'time_created' => array('S' => $event['time_created']),
                 'num_participants' => array('N' => 0), //start with no participants at the beginning
+                'current_uid' => array('N' => 0), 
                 //"time_started" => "time_started",
                 //"time_queued" => "time_started",
                 //"time_processed" => "time_started",
