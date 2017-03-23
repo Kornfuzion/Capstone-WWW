@@ -29,7 +29,7 @@ stderr="$prog.err"
 
 start() {
     echo -n $"Starting $prog: "
-    daemon --pidfile=${pidfile} $python $image_pipeline 
+    daemon --respawn --pidfile=${pidfile} --chdir=$chdir --stdout=$stdout --stderr=$stderr $python $image_pipeline
     RETVAL=$?
     echo 
     [ $RETVAL = 0 ] 
