@@ -180,7 +180,7 @@ def runPipeline(event_id, frame_id, image_dir):
     #/var/www/src/lib/PoissonRecon/Bin/Linux/SurfaceTrimmer --in chair.density.ply --out chair.trim.ply --trim 5
     # using 5 based on experimental evidence. May change later
     # TODO: figure out how to include color
-    pSurfaceTrim = subprocess.Popen( [os.path.join(POISSON_RECON_BIN, "SurfaceTrimmer"), "--in", model_file_name, "--out", model_file_name, "--trim", "5"] )
+    pSurfaceTrim = subprocess.Popen( [os.path.join(POISSON_RECON_BIN, "SurfaceTrimmer"), "--in", model_file_name, "--out", model_file_name, "--trim", "6"] )
     pSurfaceTrim.wait()
 
     #upload mesh cloud

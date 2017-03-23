@@ -160,7 +160,7 @@ class EventController {
     }
 
     function createEvent($request, $response, $args) {
-        $event = json_decode($request->getBody());
+        $event = $request->getParsedBody();
         $event['time_created'] = date('Y-m-d H:i:s');
         
         $result = $this->container->db->putItem(array(
@@ -168,8 +168,8 @@ class EventController {
             'Item' => array(        
                 'id' => array('S' => $event['id']),
                 'name' => array('S' => $event['name']),
-                'latitude' =>  array('N' => $event['latitude']), //-79.3832
-                'longitude' => array('N' => $event['longitude']), //79.3832
+                'latitude' =>  array('N' => floatval($event['latitude'])), //-79.3832
+                'longitude' => array('N' => floatval($event['longitude'])), //79.3832
                 'status' => array('S' => "NEW"), //NEW, CAPTURING, QUEUED, PROCESSING, FINISHED 
                 'thumbnail' => array('S' => $event['thumbnail']), //TODO: S3 image upload with appropriate path or only allow links on the interwebs
                 'time_created' => array('S' => $event['time_created']),
@@ -182,12 +182,11 @@ class EventController {
                 'frames' => array('N' => $event['frames']) //number of frames? 
             )
         ));
-
         return $response->withJson($event);
     }
 
     function editEvent($request, $response, $args) {
-        $event = json_decode($request->getBody());
+        $event = $request->getParsedBody();
         $event['id'] = $request->getAttribute('id');
         
         $result = $this->container->db->updateItem (array(
@@ -213,8 +212,6 @@ class EventController {
     function joinEvent($request, $response, $args) {
         $id = $request->getAttribute('id');
         
-        $r = json_decode($request->getBody());
-        
         $result = $this->container->db->updateItem (array(
             'TableName' => 'events',
             'Key' => array(
@@ -233,8 +230,6 @@ class EventController {
 
     function leaveEvent($request, $response, $args) {
         $id = $request->getAttribute('id');
-        
-        $event = json_decode($request->getBody());
         
         $result = $this->container->db->updateItem (array(
             'TableName' => 'events',
