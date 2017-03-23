@@ -13,6 +13,7 @@ class EventController {
         $app->post('/event/{id}', array($this, 'createEvent'));
         $app->put('/event/{id}', array($this, 'editEvent'));
         $app->get('/event/join/{id}', array($this, 'joinEvent'));
+        $app->get('/event/leave/{id}', array($this, 'leaveEvent'));
         $app->post('/event/upload/{id}', array($this, 'contributeToEvent'))->setOutputBuffering(false);
         $app->delete('/event/{id}', array($this, 'deleteEvent'));
     }
@@ -221,7 +222,28 @@ class EventController {
             'ExpressionAttributeValues' =>  array(
                 ':CONST_ONE' => array('N' => 1)
             ),
-            'UpdateExpression' => 'ADD num_participants :CONST_ONE',
+            'UpdateExpression' => 'ADD num_participants :CONST_ONE, current_uid :CONST_ONE',
+            'ReturnValues' => 'ALL_NEW'
+        ));
+
+        $event = self::parseItem($result['Attributes']); 
+        return $response->withJson($event);
+    }
+
+    function leaveEvent($request, $response, $args) {
+        $id = $request->getAttribute('id');
+        
+        $event = json_decode($request->getBody());
+        
+        $result = $this->container->db->updateItem (array(
+            'TableName' => 'events',
+            'Key' => array(
+                'id' => array('S' => $id) 
+            ),
+            'ExpressionAttributeValues' =>  array(
+                ':MINUS_ONE' => array('N' => -1)
+            ),
+            'UpdateExpression' => 'ADD num_participants :MINUS_ONE',
             'ReturnValues' => 'ALL_NEW'
         ));
 
