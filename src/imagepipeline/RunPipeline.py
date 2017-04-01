@@ -238,7 +238,4 @@ def updateEvent(event_id, status):
         UpdateExpression='SET #S = :status',
     )
 
-def sendNotification(event_id):
-
-
 receiveMessage()
