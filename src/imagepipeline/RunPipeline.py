@@ -14,6 +14,13 @@ import shutil
 import boto3
 import json
 
+from pyfcm import FCMNotification
+
+def sendPushNotification(event_id):
+    push_service = FCMNotification(api_key="AAAAkH7zsZQ:APA91bERB53BhlshsRLZ1p82VSih4d_GDs9eE9jdCaRiCFXhNls1_EZAmVBhNMyYF_iDANy6m9ReJ_PIfdoQlRsy5lM1wGI5V0EhuajBrmZeXDjPXlAwt2Olns3VnyTBny5UWjk3Uhdi")
+    # Send a message to devices subscribed to a topic.
+    result = push_service.notify_topic_subscribers(topic_name=event_id, message_body="Your Scope is Ready!")
+
 def receiveMessage():
     client = boto3.client('sqs')
     response = client.receive_message(
@@ -88,6 +95,10 @@ def receiveMessage():
             QueueUrl='https://sqs.us-west-2.amazonaws.com/196517509005/modelProcessingQueue',
             ReceiptHandle=event_message['ReceiptHandle']
         )
+
+        sendPushNotification(event_info['id'])
+
+
 
 def runPipeline(event_id, frame_id, image_dir):
     BUNDLER_HOME = "/var/www/src/lib/bundler_sfm/"
@@ -177,11 +188,15 @@ def runPipeline(event_id, frame_id, image_dir):
     pPoissonRecon = subprocess.Popen( [os.path.join(POISSON_RECON_BIN, "PoissonRecon"), "--in", model_file_name, "--out", model_file_name,"--depth", "10", "--color", "16", "--density"] )
     pPoissonRecon.wait()
 
-    #/var/www/src/lib/PoissonRecon/Bin/Linux/SurfaceTrimmer --in chair.density.ply --out chair.trim.ply --trim 5
-    # using 5 based on experimental evidence. May change later
-    # TODO: figure out how to include color
-    pSurfaceTrim = subprocess.Popen( [os.path.join(POISSON_RECON_BIN, "SurfaceTrimmer"), "--in", model_file_name, "--out", model_file_name, "--trim", "6"] )
-    pSurfaceTrim.wait()
+    # use largest trim value that produces a significant amount of output
+    mesh_file_name = os.path.join(pmvs_model_dir, "mesh.ply") 
+    trim_val = 8;
+    file_size = 0
+    while (file_size <= 500): #picking 500 bytes for now. Realistically should be order of megabytes for most images
+        pSurfaceTrim = subprocess.Popen( [os.path.join(POISSON_RECON_BIN, "SurfaceTrimmer"), "--in", model_file_name, "--out", mesh_file_name, "--trim", str(trim_val)] )
+        pSurfaceTrim.wait()
+        file_size = os.path.getsize(mesh_file_name) # check if trimmed file has significant amount of data
+        trim_val = trim_val - 1; # decrement trim val
 
     #upload mesh cloud
     s3 = boto3.client('s3')
@@ -222,5 +237,8 @@ def updateEvent(event_id, status):
         ReturnValues='ALL_NEW',
         UpdateExpression='SET #S = :status',
     )
+
+def sendNotification(event_id):
+
 
 receiveMessage()
