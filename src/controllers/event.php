@@ -141,6 +141,18 @@ class EventController {
             array_push($json, self::parseItem($item));
         }
 
+        $iterator = $this->container->db->getIterator('Scan', array(
+            'TableName' => 'events',
+            'ScanFilter' => array(
+                'status' => array(
+                    'AttributeValueList' => array(
+                        array('S' => "PROCESSING")
+                    ),
+                    'ComparisonOperator' => 'EQ'
+                )
+            )
+        ));
+
         return $response->withJson($json);
     }
 
@@ -231,17 +243,23 @@ class EventController {
     function leaveEvent($request, $response, $args) {
         $id = $request->getAttribute('id');
         
-        $result = $this->container->db->updateItem (array(
-            'TableName' => 'events',
-            'Key' => array(
-                'id' => array('S' => $id) 
-            ),
-            'ExpressionAttributeValues' =>  array(
-                ':MINUS_ONE' => array('N' => -1)
-            ),
-            'UpdateExpression' => 'ADD num_participants :MINUS_ONE',
-            'ReturnValues' => 'ALL_NEW'
-        ));
+        try{
+            $result = $this->container->db->updateItem (array(
+                'TableName' => 'events',
+                'Key' => array(
+                    'id' => array('S' => $id) 
+                ),
+                'ExpressionAttributeValues' =>  array(
+                    ':MINUS_ONE' => array('N' => -1),
+                    ':ZERO' => array('N' => 0)
+                ),
+                'UpdateExpression' => 'ADD num_participants :MINUS_ONE',
+                'ConditionExpression' => 'num_participants > :ZERO',
+                'ReturnValues' => 'ALL_NEW'
+            ));
+        } catch (Exception $e) {
+            $this->container->logger->addInfo("Could not update: " . $e->getMessage());
+        }
 
         $event = self::parseItem($result['Attributes']); 
         return $response->withJson($event);
