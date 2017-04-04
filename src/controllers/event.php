@@ -40,6 +40,7 @@ class EventController {
             'thumbnail' => isset($item['thumbnail']['S']) ? $item['thumbnail']['S'] : null, //TODO: S3 image upload with appropriate path or only allow links on the interwebs
             'time_created' => isset($item['time_created']['S']) ? $item['time_created']['S'] : null,
             'num_participants' => isset($item['num_participants']['N']) ? $item['num_participants']['N'] : null, 
+            'current_uid' => isset($item['current_uid']['N']) ? $item['current_uid']['N'] : null,
             //"time_started" => "time_started",
             //"time_queued" => "time_queued",
             //"time_processed" => "time_processed",
