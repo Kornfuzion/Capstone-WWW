@@ -153,6 +153,11 @@ class EventController {
             )
         ));
 
+        foreach ($iterator as $item) {
+            //may need to do some parsing
+            array_push($json, self::parseItem($item));
+        }
+
         return $response->withJson($json);
     }
 
