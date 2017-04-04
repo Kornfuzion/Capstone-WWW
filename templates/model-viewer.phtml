@@ -94,6 +94,7 @@
                     bar = Math.floor( bar * xhr.loaded / xhr.total );
 
                     $( "#bar" ).width(bar);
+                    $( "#message").text("Loading: " + Math.floor(xhr.loaded / xhr.total * 100) + "%");
                 };
 
                 var onLoad = function ( geometry ) {
@@ -137,8 +138,13 @@
 
                 // Function called when download errors
                 var onError = function ( xhr ) {
-                    console.error( 'An error happened' );
+                    $( "#message").text("This model is unavailable");
+                    $( "#progressbar" ).hide();
+                    $( "#progress" ).hide();
                 }
+
+                //
+                checkResource("<?= htmlspecialchars($modelPath); ?>");
 
                 // PLY file
                 var loader = new THREE.PLYLoader();
@@ -218,6 +224,17 @@
                 controls.update();
                 renderer.render( scene, camera );
                 //stats.update();
+            }
+
+            function checkResource (url) {
+                var req = new XMLHttpRequest();
+                req.open('HEAD', url, true);
+                req.send();
+                if (req.status === 404 || req.status === 403) {
+                    $( "#message").text("This model is unavailable");
+                    $( "#progressbar" ).hide();
+                    $( "#progress" ).hide();
+                }
             }
         </script>
     </body>
