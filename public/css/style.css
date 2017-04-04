@@ -1,1 +1,41 @@
 /* Let's put our styling into this file */
+body {
+    background:#000;
+    color:#fff;
+    padding:0;
+    margin:0;
+    overflow:hidden;
+    font-family: "Arial";
+    text-align:center;
+}
+
+#progress {
+    color:white;
+    top:7em;
+    width: 100%;
+    font-size:3em;
+    position:absolute;
+    z-index:100;
+    text-align: center;
+    text-shadow: #000 0px 0px 10px;
+    display:block;
+}
+
+#progressbar {
+    text-align: center;
+    background: white;
+    width: 250px;
+    height: 10px;
+}
+
+#bar {
+    background:#ddd;
+    width:50px;
+    height:10px;
+}
+
+canvas { 
+	pointer-events:none; 
+	z-index:10; 
+}
+

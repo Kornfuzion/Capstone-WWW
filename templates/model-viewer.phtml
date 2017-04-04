@@ -6,20 +6,27 @@
         <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
         <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
         <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
-            <script src="/js/lib/touch_punch.min.js"></script>
-            <meta charset="utf-8">
+        <script src="http://ec2-35-163-6-36.us-west-2.compute.amazonaws.com/js/lib/touch_punch.min.js"></script>
+
+        <meta charset="utf-8">        
         <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
     </head>
     <body>
         <div id="heightSlider"></div>
         <div id="distanceSlider"></div>
-        <script src="/js/build/three.min.js"></script>
-        <script src="/js/lib/TrackballControls.js"></script>
-        <script src="/js/loader/PLYLoader.js"></script>
+        <script src="http://ec2-35-163-6-36.us-west-2.compute.amazonaws.com/js/build/three.min.js"></script>
+        <script src="http://ec2-35-163-6-36.us-west-2.compute.amazonaws.com/js/lib/TrackballControls.js"></script>
+        <script src="http://ec2-35-163-6-36.us-west-2.compute.amazonaws.com/js/loader/PLYLoader.js"></script>
 
-        <script src="/js/detector.js"></script>
-        <script src="/js/lib/stats.min.js"></script>
+        <script src="http://ec2-35-163-6-36.us-west-2.compute.amazonaws.com/js/detector.js"></script>
+        <script src="http://ec2-35-163-6-36.us-west-2.compute.amazonaws.com/js/lib/stats.min.js"></script>
+        <div id="progress">
+            <span id="message">Loading ...</span>
 
+            <center>
+                <div id="progressbar"><div id="bar"></div></div>
+            </center>
+        </div>
         <script>
             /*
              * Add some Jquery code to slide around camera height, distance
@@ -82,9 +89,18 @@
                 scene = new THREE.Scene();
                 scene.add( camera );
 
-                // PLY file
-                var loader = new THREE.PLYLoader();
-                loader.load(  "<?= htmlspecialchars($modelPath); ?>", function ( geometry ) {
+                var onProgress = function( xhr ) {
+                    var bar = 250
+                    bar = Math.floor( bar * xhr.loaded / xhr.total );
+
+                    $( "#bar" ).width(bar);
+                };
+
+                var onLoad = function ( geometry ) {
+                    $( "#message" ).hide();
+                    $( "#progressbar" ).hide();
+                    $( "#progress" ).hide();
+
                     //var geometry = object.content;
                     var material = new THREE.PointsMaterial({ vertexColors: true, size: 0.5 }); 
                     var mesh = new THREE.Points(geometry, material);
@@ -117,7 +133,16 @@
 
                     scene.add( mesh );
                     */
-                } );
+                }; 
+
+                // Function called when download errors
+                var onError = function ( xhr ) {
+                    console.error( 'An error happened' );
+                }
+
+                // PLY file
+                var loader = new THREE.PLYLoader();
+                loader.load( "<?= htmlspecialchars($modelPath); ?>", onLoad, onProgress, onError);
 
                 // light
                 var dirLight = new THREE.DirectionalLight( 0xffffff );
