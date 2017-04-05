@@ -66,7 +66,9 @@
 
             var rotateCamera = false;
 
-            var cube;
+            var mesh, cube;
+
+            var rotationAxis = new THREE.Vector3(0, 1, 0);  
 
             init();
             animate();
@@ -110,7 +112,7 @@
 
                     //var geometry = object.content;
                     var material = new THREE.PointsMaterial({ vertexColors: true, size: 0.5 }); 
-                    var mesh = new THREE.Points(geometry, material);
+                    mesh = new THREE.Points(geometry, material);
                     
                     var box = new THREE.Box3().setFromObject( mesh );
                     
@@ -205,15 +207,13 @@
                 window.addEventListener( 'resize', onWindowResize, false );
 
                 $('body').keyup(function(e){
-                   if(e.keyCode == 32){
+                    if(e.keyCode == 32){
                         rotateCamera = !rotateCamera;
-                        var cameraPosition = camera.position;
-                        var centerPoint = new THREE.Vector3();
-                        centerPoint.copy(cameraPosition);
-                        var cameraGaze = new THREE.Vector3(0, 0, -20);
-                        centerPoint.add(cameraGaze);
-                        cube.position = centerPoint;
-                   }
+                        rotationAxis = new THREE.Vector3(0, 1, 0);  
+                        camera.localToWorld(rotationAxis);
+                        rotationAxis.normalize();
+                        console.log(rotationAxis);
+                    }
                 });
             }
 
@@ -258,8 +258,8 @@
                 controls.update();
 
                 if (rotateCamera){
-                    var timer = Date.now() * 0.0005;
-                    camera.position = Math.sin(timer) * 2.5;
+                    //mesh.rotateOnAxis(upVector, timer);
+                    mesh.rotateOnAxis(rotationAxis,0.025);
                 }
 
                 renderer.render( scene, camera );
