@@ -209,8 +209,7 @@
                 $('body').keyup(function(e){
                     if(e.keyCode == 32){
                         rotateCamera = !rotateCamera;
-                        rotationAxis = new THREE.Vector3(0, 1, 0);  
-                        camera.localToWorld(rotationAxis);
+                        rotationAxis.copy(camera.up);
                         rotationAxis.normalize();
                         console.log(rotationAxis);
                     }
