@@ -62,6 +62,12 @@
 
             var camera, scene, renderer;
 
+            var cameraTarget;
+
+            var rotateCamera = false;
+
+            var cube;
+
             init();
             animate();
 
@@ -70,7 +76,7 @@
                 container = document.createElement( 'div' );
                 document.body.appendChild( container );
 
-                camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 500 );
+                camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 600 );
                 camera.position.set( 0, 0, 50);
 
                 controls = new THREE.TrackballControls( camera );
@@ -108,9 +114,18 @@
                     
                     var box = new THREE.Box3().setFromObject( mesh );
                     
-                    mesh.position.x = 0;
-                    mesh.position.y = 0;
-                    mesh.position.z = 0;
+                    var average = new THREE.Vector3();
+                    for (var i = 0; i < geometry.vertices.length; i++)
+                    {
+                        average.add(geometry.vertices[i]);
+                    }
+                    var scale = -1.0/geometry.vertices.length;
+                    average.multiplyScalar(scale);
+
+                    for (var i = 0; i < geometry.vertices.length; i++)
+                    {
+                        geometry.vertices[i].add(average);
+                    }
 
                     var scale = (50/box.getSize().x);
                     mesh.scale.multiplyScalar( scale );
@@ -118,6 +133,14 @@
                     mesh.castShadow = true;
                     mesh.receiveShadow = true;
 
+                    /*
+                    var boxGeometry = new THREE.BoxGeometry( 10, 10, 10 );
+                    cube = new THREE.Mesh( boxGeometry, new THREE.MeshBasicMaterial( { color: Math.random() * 0xffffff, opacity: 1 } ) );
+                    cube.position = scene.position;
+
+                    scene.add(cube);
+                    */
+                    
                     scene.add(mesh);
                     /*
                     geometry.computeFaceNormals();
@@ -181,6 +204,17 @@
 
                 window.addEventListener( 'resize', onWindowResize, false );
 
+                $('body').keyup(function(e){
+                   if(e.keyCode == 32){
+                        rotateCamera = !rotateCamera;
+                        var cameraPosition = camera.position;
+                        var centerPoint = new THREE.Vector3();
+                        centerPoint.copy(cameraPosition);
+                        var cameraGaze = new THREE.Vector3(0, 0, -20);
+                        centerPoint.add(cameraGaze);
+                        cube.position = centerPoint;
+                   }
+                });
             }
 
             function addShadowedLight( x, y, z, color, intensity ) {
@@ -222,6 +256,12 @@
                 requestAnimationFrame( animate );
 
                 controls.update();
+
+                if (rotateCamera){
+                    var timer = Date.now() * 0.0005;
+                    camera.position = Math.sin(timer) * 2.5;
+                }
+
                 renderer.render( scene, camera );
                 //stats.update();
             }
@@ -236,6 +276,7 @@
                     $( "#progress" ).hide();
                 }
             }
+
         </script>
     </body>
 </html>
